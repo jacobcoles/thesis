@@ -68,7 +68,6 @@ class DataLoader(data.Dataset):
 
         self.num_images = self.label_start_ix.shape[0]
         print('read %d image features' %(self.num_images))
-
         # separate out indexes for each of the provided splits
         self.split_ix = {'train': [], 'val': [], 'test': []}
         for ix in range(len(self.info['images'])):
@@ -211,7 +210,8 @@ class DataLoader(data.Dataset):
         """
         ix = index #self.split_ix[index]
         if self.use_att:
-            print(self.info['images'][ix])
+            #print(ix)
+            #print(self.info['images'][ix])
             att_feat = np.load(os.path.join(self.input_att_dir, str(self.info['images'][ix]['id']) + '.npz'))['feat']
             # Reshape to K x C
             att_feat = att_feat.reshape(-1, att_feat.shape[-1])

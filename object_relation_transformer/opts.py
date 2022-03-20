@@ -4,7 +4,7 @@ def parse_opt():
     parser = argparse.ArgumentParser()
 
     # Data input settings
-    parser.add_argument('--input_json', type=str, default='/data/captioning_data/dataset_coco.json',
+    parser.add_argument('--input_json', type=str, default='data/dataset_annotations.json',
                     help='path to the json file containing additional info and vocab')
     parser.add_argument('--input_fc_dir', type=str, default='data/cocotalk_fc',
                     help='path to the directory containing the preprocessed fc feats')
@@ -69,7 +69,7 @@ def parse_opt():
                     help='strength of dropout in the Language Model RNN')
     parser.add_argument('--self_critical_after', type=int, default=-1,
                     help='After what epoch do we start finetuning the CNN? (-1 = disable; never finetune, 0 = finetune from start)')
-    parser.add_argument('--seq_per_img', type=int, default=5,
+    parser.add_argument('--seq_per_img', type=int, default=1,
                     help='number of captions to sample for each image during training. Done for efficiency since CNN forward pass is expensive. E.g. coco has 5 sents/image')
     parser.add_argument('--beam_size', type=int, default=1,
                     help='used when sample_max = 1, indicates number of beams in beam search. Usually 2 or 3 works well. More is not better. Set this to 1 for faster runtime but a bit worse performance.')
@@ -105,7 +105,7 @@ def parse_opt():
 
 
     # Evaluation/Checkpointing
-    parser.add_argument('--val_images_use', type=int, default=217,
+    parser.add_argument('--val_images_use', type=int, default=-1,
                     help='how many images to use when periodically evaluating the validation loss? (-1 = all)')
     parser.add_argument('--save_checkpoint_every', type=int, default=1,
                     help='how often to save a model checkpoint (in iterations)?')

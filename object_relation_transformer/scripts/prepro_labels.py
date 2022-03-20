@@ -83,16 +83,21 @@ def build_vocab(imgs, params):
     print('inserting the special UNK token')
     vocab.append('UNK')
   
+  #moved the following bit elsewhere because it's stupid here
+  #i.e. it's not to do with building the vocab but applying the vocab to the images
+  #screws up if left here when trying to do fine tuning
+  #moved to encode_captions()
+  """
   for img in imgs:
     img['final_captions'] = []
     for sent in img['sentences']:
       txt = sent['tokens']
       caption = [w if counts.get(w,0) > count_thr else 'UNK' for w in txt]
       img['final_captions'].append(caption)
+   """
+  return vocab, counts
 
-  return vocab
-
-def encode_captions(imgs, params, wtoi):
+def encode_captions(imgs, params, wtoi, counts):
   """ 
   encode all captions into one large array, which will be 1-indexed.
   also produces label_start_ix and label_end_ix which store 1-indexed 
@@ -100,6 +105,14 @@ def encode_captions(imgs, params, wtoi):
   each image in the dataset.
   """
 
+  count_thr = params['word_count_threshold']
+  for img in imgs:
+    img['final_captions'] = []
+    for sent in img['sentences']:
+      txt = sent['tokens']
+      caption = [w if counts.get(w,0) > count_thr else 'UNK' for w in txt]
+      img['final_captions'].append(caption)
+    
   max_length = params['max_length']
   N = len(imgs)
   M = sum(len(img['final_captions']) for img in imgs) # total number of captions
@@ -137,19 +150,25 @@ def encode_captions(imgs, params, wtoi):
   return L, label_start_ix, label_end_ix, label_length
 
 def main(params):
-
+    
   imgs = json.load(open(params['input_json'], 'r'))
   imgs = imgs['images']
 
   seed(123) # make reproducible
   
   # create the vocab
-  vocab = build_vocab(imgs, params)
+  vocab, counts = build_vocab(imgs, params)
   itow = {i+1:w for i,w in enumerate(vocab)} # a 1-indexed vocab translation table
   wtoi = {w:i+1 for i,w in enumerate(vocab)} # inverse table
   
+  #if we want to fine-tune on a new dataset, we can switch the images to our new set, now that the vocabulary has been made
+  if params['optional_json'] is not None:
+    print("Fine tuning option selected. ")
+    imgs = json.load(open(params['optional_json'], 'r'))
+    imgs = imgs['images']
+
   # encode captions in large arrays, ready to ship to hdf5 file
-  L, label_start_ix, label_end_ix, label_length = encode_captions(imgs, params, wtoi)
+  L, label_start_ix, label_end_ix, label_length = encode_captions(imgs, params, wtoi, counts)
 
   # create output h5 file
   N = len(imgs)
@@ -186,6 +205,7 @@ if __name__ == "__main__":
 
   # input json
   parser.add_argument('--input_json', required=True, help='input json file to process into hdf5')
+  parser.add_argument('--optional_json', default=None, help='input json from second dataset. Uses images from this, but combines vocab with input-json')
   parser.add_argument('--output_json', default='data.json', help='output json file')
   parser.add_argument('--output_h5', default='data', help='output h5 file')
   parser.add_argument('--images_root', default='', help='root location in which images are stored, to be prepended to file_path in input json')

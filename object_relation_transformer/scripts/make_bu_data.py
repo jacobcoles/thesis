@@ -43,9 +43,9 @@ for infile in infiles:
     print('Reading ' + infile)
     with open(os.path.join(args.downloaded_feats, infile), "r+") as tsv_in_file:
 """
-os.makedirs(args.output_dir+'_att')
-os.makedirs(args.output_dir+'_fc')
-os.makedirs(args.output_dir+'_box')
+#os.makedirs(args.output_dir+'_att')
+#os.makedirs(args.output_dir+'_fc')
+#os.makedirs(args.output_dir+'_box')
 
 if not os.path.isdir(args.output_dir+'_att'):
     os.mkdir(args.output_dir+'_att')

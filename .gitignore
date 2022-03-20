@@ -3,5 +3,6 @@ SentencesNYUv2_toolbox
 NYUv2_toolbox
 nyu_depth_v2_labeled.mat
 object_relation_transformer/data
+Faster-R-CNN-with-model-pretrained-on-Visual-Genome
 *.pth
 *.pkl

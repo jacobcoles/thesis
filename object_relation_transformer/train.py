@@ -55,18 +55,20 @@ def train(opt):
             with open(os.path.join(opt.start_from, 'histories_'+opt.id+'.pkl')) as f:
                 histories = cPickle.load(f)
 
-    iteration = infos.get('iter', 0)
-    epoch = infos.get('epoch', 0)
+    iteration = 0 #infos.get('iter', 0)
+    epoch = 0 #infos.get('epoch', 0)
 
-    val_result_history = histories.get('val_result_history', {})
-    loss_history = histories.get('loss_history', {})
-    lr_history = histories.get('lr_history', {})
-    ss_prob_history = histories.get('ss_prob_history', {})
+    val_result_history = {} #histories.get('val_result_history', {})
+    loss_history = {} #histories.get('loss_history', {})
+    lr_history = {} #histories.get('lr_history', {})
+    ss_prob_history = {} #histories.get('ss_prob_history', {})
 
-    loader.iterators = infos.get('iterators', loader.iterators)
-    loader.split_ix = infos.get('split_ix', loader.split_ix)
-    if opt.load_best_score == 1:
-        best_val_score = infos.get('best_val_score', None)
+    
+    loader.iterators = loader.iterators #infos.get('iterators', loader.iterators)
+    loader.split_ix = loader.split_ix #infos.get('split_ix', loader.split_ix)
+    #if opt.load_best_score == 1:
+    #    best_val_score = infos.get('best_val_score', None)
+    best_val_score = None
 
     model = models.setup(opt).cuda()
     dp_model = torch.nn.DataParallel(model)
