@@ -16,7 +16,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 # output_dir
-parser.add_argument('--downloaded_feats', default='./data/sentences3Dfrcnn', help='downloaded feature directory')
+parser.add_argument('--downloaded_feats', default='data/sentences3Dfrcnn', help='downloaded feature directory')
 parser.add_argument('--output_dir', default='data/cocobu', help='output feature files')
 
 args = parser.parse_args()

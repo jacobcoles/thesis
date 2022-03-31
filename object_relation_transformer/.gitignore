@@ -19,3 +19,6 @@ coco-caption
 # Ignore models
 *.pth
 *.pkl
+
+# Ignore images
+*.jpg

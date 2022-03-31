@@ -276,7 +276,7 @@ class BoxMultiHeadedAttention(nn.Module):
     def forward(self, input_query, input_key, input_value, input_box, mask=None):
         "Implements Figure 2 of Relation Network for Object Detection"
         if mask is not None:
-            # Same mask applied to all h heads.
+            # Same mask applied to all h heads. 
             mask = mask.unsqueeze(1)
         nbatches = input_query.size(0)
 
