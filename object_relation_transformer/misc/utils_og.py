@@ -77,6 +77,7 @@ class LanguageModelCriterion(nn.Module):
 
         output = -input.gather(2, target.unsqueeze(2)).squeeze(2) * mask
         output = torch.sum(output) / torch.sum(mask)
+        print("output", output, "\n\n", output.shape)
 
         return output
 
@@ -226,10 +227,8 @@ def BoxRelationalEmbedding(f_g, dim_g=64, wave_len=1000, trignometric_embedding=
     """
     Given a tensor with bbox coordinates for detected objects on each batch image,
     this function computes a matrix for each image
-
     with entry (i,j) given by a vector representation of the
     displacement between the coordinates of bbox_i, and bbox_j
-
     input: np.array of shape=(batch_size, max_nr_bounding_boxes, 4)
     output: np.array of shape=(batch_size, max_nr_bounding_boxes, max_nr_bounding_boxes, 64)
     """
@@ -237,22 +236,14 @@ def BoxRelationalEmbedding(f_g, dim_g=64, wave_len=1000, trignometric_embedding=
     #follow implementation of https://github.com/heefe92/Relation_Networks-pytorch/blob/master/model.py#L1014-L1055
 
     batch_size = f_g.size(0)
-    
-    x_min, y_min, z_min, x_max, y_max, z_max = torch.chunk(f_g, 6, dim=-1)
-    #x_min, y_min, x_max, y_max = torch.chunk(f_g, 4, dim=-1)
-    print('x_min: ', x_min,'y_min: ', y_min, 'z_min: ', z_min,'x_max: ', x_max,'y_max: ', y_max,'z_max: ', z_max)
+
+    x_min, y_min, x_max, y_max = torch.chunk(f_g, 4, dim=-1)
     #print('x_min: ', x_min,'y_min: ', y_min,'x_max: ', x_max,'y_max: ', y_max)
-    
-    #(big difference in range with depth)
-    z_min = z_min * 10
-    z_max = z_max * 10
-    
+
     cx = (x_min + x_max) * 0.5
     cy = (y_min + y_max) * 0.5
-    cz = (z_min + z_max) * 0.5
     w = (x_max - x_min) + 1.
     h = (y_max - y_min) + 1.
-    d = (z_max - z_min) + 1.
 
     #cx.view(1,-1) transposes the vector cx, and so dim(delta_x) = (dim(cx), dim(cx))
     delta_x = cx - cx.view(batch_size, 1, -1)
@@ -262,25 +253,17 @@ def BoxRelationalEmbedding(f_g, dim_g=64, wave_len=1000, trignometric_embedding=
     delta_y = cy - cy.view(batch_size, 1, -1)
     delta_y = torch.clamp(torch.abs(delta_y / h), min=1e-3)
     delta_y = torch.log(delta_y)
-    
-    delta_z = cz - cz.view(batch_size, 1, -1)
-    delta_z = torch.clamp(torch.abs(delta_z / d), min=1e-3)
-    delta_z = torch.log(delta_z)
 
     delta_w = torch.log(w / w.view(batch_size, 1, -1))
     delta_h = torch.log(h / h.view(batch_size, 1, -1))
-    delta_d = torch.log(d / d.view(batch_size, 1, -1))
 
     matrix_size = delta_h.size()
     delta_x = delta_x.view(batch_size, matrix_size[1], matrix_size[2], 1)
     delta_y = delta_y.view(batch_size, matrix_size[1], matrix_size[2], 1)
-    delta_z = delta_z.view(batch_size, matrix_size[1], matrix_size[2], 1)
     delta_w = delta_w.view(batch_size, matrix_size[1], matrix_size[2], 1)
     delta_h = delta_h.view(batch_size, matrix_size[1], matrix_size[2], 1)
-    delta_d = delta_d.view(batch_size, matrix_size[1], matrix_size[2], 1)
 
-    position_mat = torch.cat((delta_x, delta_y, delta_z, delta_w, delta_h, delta_d), -1)
-    #position_mat = torch.cat((delta_x, delta_y, delta_w, delta_h), -1)
+    position_mat = torch.cat((delta_x, delta_y, delta_w, delta_h), -1)
 
     if trignometric_embedding == True:
         feat_range = torch.arange(dim_g / 8).cuda()
@@ -298,7 +281,6 @@ def BoxRelationalEmbedding(f_g, dim_g=64, wave_len=1000, trignometric_embedding=
         embedding = torch.cat((sin_mat, cos_mat), -1)
     else:
         embedding = position_mat
-    print("it isssssss", sum[embedding.shape[:-1]])
     return(embedding)
 
 
@@ -306,7 +288,6 @@ def get_box_feats(boxes, d):
     """
     Given the bounding box coordinates for an object on an image, this function
     generates the trivial horizontal, and vertical 0-1 vector encoding of the bbox.
-
     This function is currently not used anywhere else in our codebase.
     """
     h,w = boxes.shape[:2]

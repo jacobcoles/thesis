@@ -22,6 +22,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
+import os
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -49,6 +53,7 @@ class EncoderDecoder(nn.Module):
 
 
     def forward(self, src, boxes, tgt, src_mask, tgt_mask):
+        #print("boxes", boxes.shape)
         "Take in and process masked src and target sequences."
         return self.decode(self.encode(src, boxes, src_mask), src_mask,
                             tgt, tgt_mask)
@@ -248,19 +253,23 @@ class BoxMultiHeadedAttention(nn.Module):
     Following the paper "Relation Networks for Object Detection" in https://arxiv.org/pdf/1711.11575.pdf
     '''
 
-    def __init__(self, h, d_model, trignometric_embedding=True, legacy_extra_skip=False, dropout=0.1):
+    def __init__(self, h, d_model, trignometric_embedding=True, legacy_extra_skip=False, dropout=0.1, feats_3d=False):
         "Take in model size and number of heads."
         super(BoxMultiHeadedAttention, self).__init__()
 
         assert d_model % h == 0
         self.trignometric_embedding=trignometric_embedding
+        self.feats_3d=feats_3d
         self.legacy_extra_skip = legacy_extra_skip
 
         # We assume d_v always equals d_k
         self.h = h
         self.d_k = d_model // h
         if self.trignometric_embedding:
-            self.dim_g = 64
+            #if self.feats_3d:
+            #    self.dim_g = 96
+            #else:
+            self.dim_g = 96
         else:
             self.dim_g = 4
         geo_feature_dim = self.dim_g
@@ -279,16 +288,24 @@ class BoxMultiHeadedAttention(nn.Module):
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
         nbatches = input_query.size(0)
-
+        
         #tensor with entries R_mn given by a hardcoded embedding of the relative position between bbox_m and bbox_n
         relative_geometry_embeddings = utils.BoxRelationalEmbedding(input_box, trignometric_embedding= self.trignometric_embedding)
-        flatten_relative_geometry_embeddings = relative_geometry_embeddings.view(-1,self.dim_g)
+        #flatten_relative_geometry_embeddings = relative_geometry_embeddings.view(-1,self.dim_g)
+        #changed because the embeddings are 96 instead of 64 for the 3D embeddings
+        flatten_relative_geometry_embeddings = relative_geometry_embeddings.view(-1,relative_geometry_embeddings.shape[3])
+        
+        #print("input_box", input_box.shape)
+        #print("relative_geometry_embeddings", relative_geometry_embeddings.shape)
+        #print("flatten_relative_geometry_embeddings", flatten_relative_geometry_embeddings.shape)
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = \
             [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
              for l, x in zip(self.linears, (input_query, input_key, input_value))]
+        #print("relative_geometry_embeddings shape", relative_geometry_embeddings.shape)
         box_size_per_head = list(relative_geometry_embeddings.shape[:3])
+        #print("box_size_per_head", box_size_per_head)
         box_size_per_head.insert(1, 1)
         relative_geometry_weights_per_head = [l(flatten_relative_geometry_embeddings).view(box_size_per_head) for l in self.WGs]
         relative_geometry_weights = torch.cat((relative_geometry_weights_per_head),1)
@@ -358,10 +375,10 @@ class RelationTransformerModel(CaptionModel):
 
     def make_model(self, src_vocab, tgt_vocab, N=6,
                    d_model=512, d_ff=2048, h=8, dropout=0.1,
-                   trignometric_embedding=True, legacy_extra_skip=False):
+                   trignometric_embedding=True, legacy_extra_skip=False, feats_3d=False):
         "Helper: Construct a model from hyperparameters."
         c = copy.deepcopy
-        bbox_attn = BoxMultiHeadedAttention(h, d_model, trignometric_embedding, legacy_extra_skip)
+        bbox_attn = BoxMultiHeadedAttention(h, d_model, trignometric_embedding, legacy_extra_skip, feats_3d)
         attn = MultiHeadedAttention(h, d_model)
         ff = PositionwiseFeedForward(d_model, d_ff, dropout)
         position = PositionalEncoding(d_model, dropout)
@@ -416,6 +433,7 @@ class RelationTransformerModel(CaptionModel):
                                     ((nn.BatchNorm1d(self.input_encoding_size),) if self.use_bn==2 else ())))
 
         self.box_trignometric_embedding = getattr(opt, 'box_trignometric_embedding', True)
+        self.use_3d_feats = getattr(opt, 'use_3d_feats', True)
         self.legacy_extra_skip = getattr(opt, 'legacy_extra_skip', False)
 
         tgt_vocab = self.vocab_size + 1
@@ -423,7 +441,8 @@ class RelationTransformerModel(CaptionModel):
             0, tgt_vocab, N=opt.num_layers, d_model=opt.input_encoding_size,
             d_ff=opt.rnn_size,
             trignometric_embedding=self.box_trignometric_embedding,
-            legacy_extra_skip=self.legacy_extra_skip)
+            legacy_extra_skip=self.legacy_extra_skip,
+            feats_3d=self.use_3d_feats)
 
     # def init_hidden(self, bsz):
     #     weight = next(self.parameters())

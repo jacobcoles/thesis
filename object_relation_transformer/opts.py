@@ -149,6 +149,9 @@ def parse_opt():
     #Relative geometry
     parser.add_argument("--box_trignometric_embedding", type=str2bool,
                         default=True)
+    parser.add_argument("--use_3d_feats", type=str2bool,
+                        default=False)
+    
     #parser.add_argument('--input_rel_box_dir',type=str, default='/data/captioning_data/cocobu_adaptive_box_relative/',
     #                help="this directory contains the bboxes in relative coordinates for the corresponding image features in --input_att_dir")
 

@@ -17,7 +17,7 @@ import misc.utils as utils
 from misc.report import ReportData
 
 REPORT_DATA_PKL_FILE_TEMPLATE = '%s_%s_report_data.pkl'
-
+device = torch.device("cuda:3")
 
 import opts
 #model_opts = opts.parse_opt()
@@ -26,7 +26,8 @@ def language_eval(dataset, preds, model_id, image_root, split):
     import sys
     #sys.path.append("coco-caption")
     #annFile = 'coco-caption/annotations/captions_val2014.json'
-    annFile = 'data/dataset_annotations.json'
+    #annFile = 'data/dataset_annotations.json'
+    annFile = 'data/dataset_annotations_1_long_sentence.json'
     from pycocotools.coco import COCO
     from misc.correct_coco_eval_cap import CorrectCOCOEvalCap
 
@@ -38,6 +39,7 @@ def language_eval(dataset, preds, model_id, image_root, split):
     cache_path = os.path.join(results_dir, model_id + '_' + split + '.json')
 
     coco = COCO(annFile)
+    print(coco.imgToAnns[1])
     valids = coco.getImgIds()
 
     # filter results to only those in MSCOCO validation set (will be about a third)
@@ -100,14 +102,14 @@ def eval_split(model, crit, loader, eval_kwargs={}):
         if data.get('labels', None) is not None and verbose_loss:
             # forward the model to get loss
             tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
-            tmp = [torch.from_numpy(_).cuda() if _ is not None else _ for _ in tmp]
+            tmp = [torch.from_numpy(_).cuda(device) if _ is not None else _ for _ in tmp]
             fc_feats, att_feats, labels, masks, att_masks = tmp
 
             with torch.no_grad():
                 #if model_opts.use_box:
                 if use_box==True:
                     boxes_data=data['boxes']
-                    boxes = torch.from_numpy(boxes_data).cuda() if boxes_data is not None else boxes_data
+                    boxes = torch.from_numpy(boxes_data).cuda(device) if boxes_data is not None else boxes_data
                     loss = crit(model(fc_feats, att_feats, boxes, labels, att_masks), labels[:,1:], masks[:,1:]).item()
                 else:
                     loss = crit(model(fc_feats, att_feats, labels, att_masks), labels[:,1:], masks[:,1:]).item()
@@ -121,7 +123,7 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             data['att_feats'][np.arange(loader.batch_size) * loader.seq_per_img],
             data['att_masks'][np.arange(loader.batch_size) * loader.seq_per_img] if data['att_masks'] is not None else None
             ]
-        tmp = [torch.from_numpy(_).cuda() if _ is not None else _ for _ in tmp]
+        tmp = [torch.from_numpy(_).cuda(device) if _ is not None else _ for _ in tmp]
         fc_feats, att_feats, att_masks = tmp
 
         # forward the model to also get generated samples for each image
@@ -129,11 +131,11 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             #if model_opts.use_box:
             if use_box==True:
                 boxes_data= data['boxes'][np.arange(loader.batch_size) * loader.seq_per_img]
-                boxes = torch.from_numpy(boxes_data).cuda() if boxes_data is not None else boxes_data
+                boxes = torch.from_numpy(boxes_data).cuda(device) if boxes_data is not None else boxes_data
                 seq = model(fc_feats, att_feats, boxes, att_masks, opt=eval_kwargs, mode='sample')[0].data
             else:
                 seq = model(fc_feats, att_feats, att_masks, opt=eval_kwargs, mode='sample')[0].data
-
+            #print("\n\nSeq is ", seq, "\n...and the shape is ", seq.shape)
         # Print beam search
         if beam_size > 1 and verbose_beam:
             for i in range(loader.batch_size):

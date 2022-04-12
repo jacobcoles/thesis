@@ -9,6 +9,7 @@ import glob
 json_boi = dict()
 json_boi['dataset'] = "SentencesNYUv2"
 json_boi['images'] = list()
+json_boi['annotations'] = list()
 
 imgs_len = len(glob.glob1('../SentencesNYUv2_toolbox/data/descriptions_info/',"*.mat"))
 train_percent = 0.7
@@ -31,6 +32,7 @@ for i, filename in enumerate(glob.glob1('../SentencesNYUv2_toolbox/data/descript
     append_item['filepath'] = '../SentencesNYUv2_toolbox/data/images'
     append_item['filename'] = str(imgid).zfill(4) + '.jpg'
     append_item['cocoid'] = imgid
+    append_item['id'] = imgid
 
     image_descriptions = loadmat(f'../SentencesNYUv2_toolbox/data/descriptions_info/in{str(imgid).zfill(4)}.mat')['descriptions'][0]
     sentences_list = [thing.strip(' ')+' .' for thing in image_descriptions[0][0][0].split('.')][:-1]
@@ -58,7 +60,7 @@ for i, filename in enumerate(glob.glob1('../SentencesNYUv2_toolbox/data/descript
 
     sentence_dict['tokens'] = sentence.split(' ')
     sentence_dict['raw'] = sentence
-    sentence_dict['imageid'] = imgid
+    sentence_dict['imgid'] = imgid
     sentence_dict['sentid'] = sentid
 
     append_item['sentences'].append(sentence_dict)
@@ -67,6 +69,13 @@ for i, filename in enumerate(glob.glob1('../SentencesNYUv2_toolbox/data/descript
     sentid += 1
 
     json_boi['images'].append(append_item)
+    
+    annotation = dict()
+    annotation['image_id'] = imgid
+    annotation['id'] = imgid #can make image id and annotation id the same since each image has only one annotation
+    annotation['caption'] = sentence
+    json_boi['annotations'].append(annotation)
+    
             
 with open('dataset_annotations_.json', 'w') as f:
     json.dump(json_boi, f)

@@ -19,6 +19,8 @@ import eval_utils
 import misc.utils as utils
 from misc.rewards import init_scorer, get_self_critical_reward
 
+device = torch.device("cuda:3")
+
 try:
     import tensorboardX as tb
 except ImportError:
@@ -70,7 +72,7 @@ def train(opt):
     #    best_val_score = infos.get('best_val_score', None)
     best_val_score = None
 
-    model = models.setup(opt).cuda()
+    model = models.setup(opt).cuda(device)
     dp_model = torch.nn.DataParallel(model)
 
     epoch_done = True
@@ -131,10 +133,10 @@ def train(opt):
         start = time.time()
 
         tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
-        tmp = [_ if _ is None else torch.from_numpy(_).cuda() for _ in tmp]
+        tmp = [_ if _ is None else torch.from_numpy(_).cuda(device) for _ in tmp]
         fc_feats, att_feats, labels, masks, att_masks = tmp
         if opt.use_box:
-            boxes = data['boxes'] if data['boxes'] is None else torch.from_numpy(data['boxes']).cuda()
+            boxes = data['boxes'] if data['boxes'] is None else torch.from_numpy(data['boxes']).cuda(device)
 
         optimizer.zero_grad()
 
@@ -151,7 +153,7 @@ def train(opt):
                 gen_result, sample_logprobs = dp_model(fc_feats, att_feats, att_masks, opt={'sample_max':0}, mode='sample')
                 reward = get_self_critical_reward(dp_model, fc_feats, att_feats, None, att_masks, data, gen_result, opt)
 
-            loss = rl_crit(sample_logprobs, gen_result.data, torch.from_numpy(reward).float().cuda())
+            loss = rl_crit(sample_logprobs, gen_result.data, torch.from_numpy(reward).float().cuda(device))
 
         loss.backward()
         utils.clip_gradient(optimizer, opt.grad_clip)

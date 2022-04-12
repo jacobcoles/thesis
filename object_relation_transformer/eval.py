@@ -17,6 +17,7 @@ import argparse
 import misc.utils as utils
 import torch
 
+
 '''
 To run inference set --language_eval=0
 To run evaluation metrics set --language_eval=1
@@ -147,9 +148,10 @@ for k in vars(infos['opt']).keys():
 vocab = infos['vocab'] # ix -> word mapping
 
 # Setup the model
+device = torch.device("cuda:3")
 model = models.setup(opt)
-model.load_state_dict(torch.load(opt.model))
-model.cuda()
+model.load_state_dict(torch.load(opt.model, map_location=device))
+model.cuda(device)
 model.eval()
 
 crit = utils.LanguageModelCriterion()
